@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kcmdump"
+version = "1.0"
+description = "KCM Dumper"
+dependencies = ["construct", "krb5"]
+
+[project.scripts]
+kcmdump = "kcmdump:main"
+
+[tool.setuptools]
+py-modules = ["kcmdump"]

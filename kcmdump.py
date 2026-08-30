@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 """
-$ apt install python3-construct python3-ldb
-$ python3 kcmdump.py /var/lib/sss/secrets/secrets.ldb out
+$ apt install python3-construct python3-krb5 python3-ldb
+$ python3 kcmdump.py out
+$ python3 kcmdump.py -f /var/lib/sss/secrets/secrets.ldb out
 $ ls -lh out/
 -rw-r--r--. 1 root root 1.3K Jan 1 00:00 user_0.ccache
 -rw-r--r--. 1 root root 1.3K Jan 1 00:00 user_1.ccache
@@ -21,6 +22,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from struct import pack
 
+import krb5
 from construct import Struct, this, Byte, Bytes, Int8ul, Int32ul, Array, PascalString, If
 from ldb import Ldb
 
@@ -50,7 +52,25 @@ KCMCCache = Struct(
 )
 
 
-def dump(database, output):
+def dump_online(output):
+
+    output = Path(output)
+    output.mkdir(exist_ok=True)
+    ctx = krb5.init_context()
+
+    for ccache in krb5.cccol_iter(ctx):
+
+        principal = krb5.cc_get_principal(ctx, ccache)
+
+        file = output / f'{principal.components[0].decode()}.ccache'
+        dest_cc = krb5.cc_resolve(ctx, f'FILE:{file}'.encode())
+        krb5.cc_initialize(ctx, dest_cc, principal)
+
+        for credential in ccache:
+            krb5.cc_store_cred(ctx, dest_cc, credential)
+
+
+def dump_database(database, output):
 
     db = Ldb(database)
     containers = db.search(base=KCM_BASEDN, expression='type=container', attrs=['dn']).msgs
@@ -91,9 +111,18 @@ def dump(database, output):
                     ccache.write(cred.blob)
 
 
-if __name__ == '__main__':
+def main():
     parser = ArgumentParser(description='KCM Dumper')
-    parser.add_argument('database', help='path to the KCM secrets database')
+    parser.add_argument('-f', '--file', help='path to the KCM secrets database')
     parser.add_argument('output', nargs='?', default='.', help='path to the output folder')
     args = parser.parse_args()
-    dump(args.database, args.output)
+
+    if args.file:
+        dump_database(args.file, args.output)
+    else:
+        dump_online(args.output)
+
+
+if __name__ == '__main__':
+    main()
+

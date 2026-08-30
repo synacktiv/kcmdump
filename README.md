@@ -22,11 +22,22 @@ to standard CCACHE files using this script.
 ## Usage
 
 ```sh
-$ apt install python3-construct python3-ldb
-$ python3 kcmdump.py /var/lib/sss/secrets/secrets.ldb
-$ ls -lh
+$ apt install python3-construct python3-krb5 python3-ldb
+$ python3 kcmdump.py -f /var/lib/sss/secrets/secrets.ldb out
+$ ls -lh out/
 -rw-r--r--. 1 root root 1.3K Jan 1 00:00 user_0.ccache
--rw-r--r--. 1 root root 1.8K Jan 1 00:00 kcmdump.py
-$ KRB5CCNAME=user_0.ccache klist
-$ KRB5CCNAME=user_0.ccache ssh user@corp.local@target.corp.local
+-rw-r--r--. 1 root root 1.3K Jan 1 00:00 user_1.ccache
+$ KRB5CCNAME=out/user_0.ccache klist
+$ KRB5CCNAME=out/user_0.ccache ssh user@corp.local@target.corp.local
+```
+
+The script also supports dumping the current user CCACHE through the KCM UNIX
+socket.
+
+```sh
+$ python3 kcmdump.py out
+$ ls -lh out/
+-rw-r--r--. 1 root root 1.3K Jan 1 00:00 admin.ccache
+-rw-r--r--. 1 root root 1.3K Jan 1 00:00 user.ccache
+$ KRB5CCNAME=out/admin.ccache klist
 ```
